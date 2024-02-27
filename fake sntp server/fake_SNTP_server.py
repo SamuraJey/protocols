@@ -1,7 +1,8 @@
 import argparse
+import threading
+import time
 import socket
 import struct
-import time
 
 UNIX_TIME_SHIFT = 2208988800
 BYTE_OFFSET = 2 ** 32
@@ -60,8 +61,6 @@ class SNTP:
                            time_with_delta(self._time_delta))
 
 
-import threading
-
 class Server:
     _IP = '127.0.0.1'
     _PORT = 123
@@ -96,7 +95,8 @@ class Server:
                 self.sock.close()
                 print('Keyboard interrupt, server stopped')
                 break
-            threading.Thread(target=self.handle_client, args=(data, data[1])).start()
+            threading.Thread(target=self.handle_client,
+                             args=(data, data[1])).start()
 
 
 def start():
