@@ -60,6 +60,8 @@ class SNTP:
                            time_with_delta(self._time_delta))
 
 
+import threading
+
 class Server:
     _IP = '127.0.0.1'
     _PORT = 123
@@ -70,6 +72,13 @@ class Server:
         self._PORT = port
         print(f'Server start on {self._IP}:{self._PORT}')
         print(f'Установленное время сдвига: {time_delta//2} сек.')
+
+    def handle_client(self, data, address):
+        received_packet = data[0]
+        print(f'New client: {address[0]}:{address[1]}')
+        sntp = SNTP(self.time_delta)
+        packet = sntp.do_magic(received_packet)
+        self.sock.sendto(packet, address)
 
     def run(self):
         try:
@@ -87,12 +96,7 @@ class Server:
                 self.sock.close()
                 print('Keyboard interrupt, server stopped')
                 break
-            received_packet = data[0]
-            address = data[1]
-            print(f'New client: {address[0]}:{address[1]}')
-            sntp = SNTP(self.time_delta)
-            packet = sntp.do_magic(received_packet)
-            self.sock.sendto(packet, address)
+            threading.Thread(target=self.handle_client, args=(data, data[1])).start()
 
 
 def start():
