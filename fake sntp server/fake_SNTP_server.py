@@ -4,27 +4,9 @@ import time
 import socket
 import struct
 
-UNIX_TIME_SHIFT = 2208988800
-BYTE_OFFSET = 2 ** 32
+
 
 # TODO Переместить константы и функции в класс SNTP
-def time_with_delta(time_delta: float) -> int:
-    """
-    Нам нужен 64 битный unsigned int, где первые 32 бита - секунды, 
-    а вторые 32 бита - доли секунды
-    Поэтому мы умножаем на 2^32, что бы получить фейковые доли секунды
-    """
-    current_time = get_ntp_time()
-    fake_time = current_time + time_delta
-    return int(fake_time * BYTE_OFFSET)
-
-
-def get_unix_time() -> int:
-    return int(time.time())
-
-
-def get_ntp_time() -> int:
-    return get_unix_time() + UNIX_TIME_SHIFT
 
 
 class SNTP:
@@ -39,6 +21,8 @@ class SNTP:
     I - 4 байта (unsigned int 32 bit)
     Q - 8 байт (unsigned long long 64 bit)
     """
+    UNIX_TIME_SHIFT = 2208988800
+    BYTE_OFFSET = 2 ** 32
     _HEADER_FORMAT = '> B B B B I I I Q Q Q Q'
     _LEAP_INDICATOR = 0  # Нет предупреждений
     _VERSION_NUMBER = 4  # номер версии NTP/SNTP
@@ -50,9 +34,25 @@ class SNTP:
     # CLIENT_REQUEST_TEMPLATE = '\x1b' + 47 * '\0'
 
     def __init__(self, time_delta: float = 0):
-        self._received_time = time_with_delta(0)
+        self._received_time = self._time_with_delta(0)
         self._time_delta = time_delta
         self._transmit_time = 0
+
+    def _time_with_delta(self, time_delta: float) -> int:
+        """
+        Нам нужен 64 битный unsigned int, где первые 32 бита - секунды, 
+        а вторые 32 бита - доли секунды
+        Поэтому мы умножаем на 2^32, что бы получить фейковые доли секунды
+        """
+        current_time = self._get_ntp_time()
+        fake_time = current_time + time_delta
+        return int(fake_time * self.BYTE_OFFSET)
+
+    def _get_unix_time(self) -> int:
+        return int(time.time())
+
+    def _get_ntp_time(self) -> int:
+        return self._get_unix_time() + self.UNIX_TIME_SHIFT
 
     def do_magic(self, received_packet: bytes) -> bytes:
         self._transmit_time = struct.unpack(self._HEADER_FORMAT,
@@ -72,7 +72,7 @@ class SNTP:
                            0,
                            self._transmit_time,
                            self._received_time,
-                           time_with_delta(self._time_delta))
+                           self._time_with_delta(self._time_delta))
 
 
 class Server:
