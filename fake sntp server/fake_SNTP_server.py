@@ -7,7 +7,7 @@ import struct
 UNIX_TIME_SHIFT = 2208988800
 BYTE_OFFSET = 2 ** 32
 
-
+# TODO Переместить константы и функции в класс SNTP
 def time_with_delta(time_delta: float) -> int:
     """
     Нам нужен 64 битный unsigned int, где первые 32 бита - секунды, 
@@ -116,7 +116,7 @@ class Server:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--delay', type=int,
-                        default=300, help='Сдвиг времени в секундах')
+                        default=0, help='Сдвиг времени в секундах')
     parser.add_argument('-p', '--port', type=int,
                         default=1233, help='Номер порта сервера')
     args = parser.parse_args()
