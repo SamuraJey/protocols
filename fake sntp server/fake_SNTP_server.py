@@ -9,6 +9,11 @@ BYTE_OFFSET = 2 ** 32
 
 
 def time_with_delta(time_delta: float) -> int:
+    """
+    Нам нужен 64 битный unsigned int, где первые 32 бита - секунды, 
+    а вторые 32 бита - доли секунды
+    Поэтому мы умножаем на 2^32, что бы получить фейковые доли секунды
+    """
     current_time = get_ntp_time()
     fake_time = current_time + time_delta
     return int(fake_time * BYTE_OFFSET)
@@ -27,11 +32,20 @@ class SNTP:
     RFC 4330
     https://www.rfc-editor.org/rfc/inline-errata/rfc4330.html
     """
-    _HEADER_FORMAT = '> B B B B I I 4s Q Q Q Q'
-    _LEAP_INDICATOR = 0  # no warning
-    _VERSION_NUMBER = 4  # NTP/SNTP version number
-    _MODE = 4  # server
-    _STRATUM = 1  # synchronized
+
+    """ 
+    > - Означает что данные в формате big-endian
+    B - 1 байт (unsigned char 8 bit)
+    I - 4 байта (unsigned int 32 bit)
+    Q - 8 байт (unsigned long long 64 bit)
+    """
+    _HEADER_FORMAT = '> B B B B I I I Q Q Q Q'
+    _LEAP_INDICATOR = 0  # Нет предупреждений
+    _VERSION_NUMBER = 4  # номер версии NTP/SNTP
+    _MODE = 4  # 3 - клиент, 4 - сервер
+    # насколько точное время у сервера 1 - самый точный (атомные часы) 15 - не точное
+    _STRATUM = 1
+    # Первые 8 бит - первый октет
     _FIRST_OCTET = _LEAP_INDICATOR << 6 | _VERSION_NUMBER << 3 | _MODE
     # CLIENT_REQUEST_TEMPLATE = '\x1b' + 47 * '\0'
 
@@ -44,9 +58,9 @@ class SNTP:
         self._transmit_time = struct.unpack(self._HEADER_FORMAT,
                                             received_packet)[10]
 
-        return self.build_server_packet()
+        return self._build_server_packet()
 
-    def build_server_packet(self) -> bytes:
+    def _build_server_packet(self) -> bytes:
         return struct.pack(self._HEADER_FORMAT,
                            self._FIRST_OCTET,
                            self._STRATUM,
@@ -54,7 +68,7 @@ class SNTP:
                            0,
                            0,
                            0,
-                           b'',
+                           0,
                            0,
                            self._transmit_time,
                            self._received_time,
@@ -69,12 +83,12 @@ class Server:
         self.time_delta = time_delta
         self._IP = ip_addr
         self._PORT = port
-        print(f'Server start on {self._IP}:{self._PORT}')
+        print(f'Сервер запущен на {self._IP}:{self._PORT}')
         print(f'Установленное время сдвига: {time_delta//2} сек.')
 
     def handle_client(self, data, address):
         received_packet = data[0]
-        print(f'New client: {address[0]}:{address[1]}')
+        print(f'Новый клиент: {address[0]}:{address[1]}')
         sntp = SNTP(self.time_delta)
         packet = sntp.do_magic(received_packet)
         self.sock.sendto(packet, address)
@@ -84,7 +98,7 @@ class Server:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.bind((self._IP, self._PORT))
         except OSError:
-            print("OSError, server can't start")
+            print("OSError, сервер не может запуститься")
             self.sock.close()
             return
 
@@ -93,22 +107,22 @@ class Server:
                 data = self.sock.recvfrom(1024)
             except KeyboardInterrupt:
                 self.sock.close()
-                print('Keyboard interrupt, server stopped')
+                print('Прерывание с клавиатуры, сервер остановлен')
                 break
             threading.Thread(target=self.handle_client,
                              args=(data, data[1])).start()
 
 
-def start():
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--delay', type=int,
-                        default=300, help='Time delay in seconds')
+                        default=300, help='Сдвиг времени в секундах')
     parser.add_argument('-p', '--port', type=int,
-                        default=12333, help='Port number')
+                        default=1233, help='Номер порта сервера')
     args = parser.parse_args()
-
-    Server("192.168.1.40", args.port, args.delay*2).run()
+    # Почему то время в 2 раза меньше чем мы передаем... Поэтому умножаем на 2 =)
+    Server("localhost", args.port, args.delay*2).run()
 
 
 if __name__ == '__main__':
-    start()
+    main()
