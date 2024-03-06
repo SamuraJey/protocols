@@ -5,10 +5,6 @@ import socket
 import struct
 
 
-
-# TODO Переместить константы и функции в класс SNTP
-
-
 class SNTP:
     """
     RFC 4330

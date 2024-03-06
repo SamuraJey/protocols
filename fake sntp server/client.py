@@ -6,7 +6,7 @@ from ntplib import NTPStats
 stats = NTPStats()
 
 sock = socket.socket()
-sock.connect(('192.168.1.40', 12333))
+sock.connect(('ntp0.ntp-servers.net', 123))
 time.sleep(1)
 
 data = '\x1b' + 47 * '\0'
