@@ -6,6 +6,7 @@ from config import Config
 from encoder import Base64
 from attacment import Attachment
 from message import Message
+import os
 
 
 def request(message: str) -> bytes:
@@ -55,22 +56,31 @@ class SMTP:
 
 
 def create_message(config: Config) -> str:
-    subject = config.subject
+    # subject = config.subject
     message = Message(config)
     if not config.attachments:
-        return f'Subject: =?UTF-8?B?{Base64.base64_from_string(subject)}?=\r\n{message.text}\r\n.\n'
-    message.append(message.text)
-    attachments = [
-        Attachment(filename).content for filename in config.attachments]
+        attachments = get_attachments(os.getcwd())
+    else:
+        attachments = get_attachments(config.attachments[0])
+
     for attachment in attachments:
-        message.append(attachment)  # сюда чета надо сделать
+        message.append(attachment)
     message.end()
 
-    return message.content
+    return f'{message.content}\r\n.\n'
+
+def get_attachments(path: str) -> list:
+    attachments = []
+    print(f"path: {path}")
+    print(f"listdir: {os.listdir(str(path))}")
+    for filename in os.listdir(str(path)):
+        if filename.lower().endswith(('.jpg','.jpeg', '.gif')):
+            attachments.append(Attachment(os.path.abspath(path + filename)).content)
+    return attachments
 
 
 def main():
-    config = Config('config.json')
+    config = Config('smtp/config.json')
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         client.connect((config.mail_server, config.port))
         client = ssl.SSLContext().wrap_socket(sock=client)

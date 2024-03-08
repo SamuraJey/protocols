@@ -12,14 +12,15 @@ class Message:
             f'To:{targets_address}',
             f'Subject: =?UTF-8?B?{subject}?=',
             f'Content-type: multipart/mixed; boundary={self._boundary}',
-            ''
+            '\n--1234567890987654321'
         ]
         self._header = '\n'.join(header)
+        print(f"self._header: {self._header}")
         self._text = self.get_text(config.message_file)
         self._text = self._text.replace('\n.', '\n..')
 
     def append(self, message: str):
-        self._text += f'--{self._boundary}\n{message}'
+        self._text += f'\n--{self._boundary}\n{message}\n'
 
     def end(self):
         self._text += f'\n--{self._boundary}--\n.\n'
@@ -36,6 +37,6 @@ class Message:
     def get_text(filename: str) -> str:
         with open(filename, 'r', encoding='utf8') as file:
             message = "".join(file.readlines())
-        return f'Content-Transfer-Encoding: 8bit\n' \
-               f'Content-Type: text/plain; charset=utf-8\n\n' \
-               f'{message}'
+        return f'Content-Type: text/plain; charset=utf-8\n' \
+               f'Content-Transfer-Encoding: 8bit\n' \
+               f'\n{message}'
