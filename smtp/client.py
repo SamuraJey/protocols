@@ -80,29 +80,34 @@ def get_attachments(path: str) -> list:
 
 
 def main():
-    config = Config('smtp/config.json')
+    config = Config('smtp/config_go.json')
+    print(f"config: {config.mail_server}")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         client.connect((config.mail_server, config.port))
         client.send(request('EHLO server'))
         print('Server:', client.recv(65535).decode().removesuffix('\n'))
         client.send(request('STARTTLS'))
-        time.sleep(1)
+        time.sleep(0.5)
         print('Server:', client.recv(65535).decode().removesuffix('\n'))
-        client = ssl.wrap_socket(client, ssl_version=ssl.PROTOCOL_TLSv1_2)
+        client = ssl.wrap_socket(client, ssl_version=ssl.PROTOCOL_TLSv1_2, do_handshake_on_connect=False)
         client.settimeout(10)
+        client.do_handshake()
 
 
         
-
     print(f'Negotiated SSL version: {client.version()}')
     print(f'Negotiated cipher: {client.cipher()}')
+    print(f'Negotiated compression: {client.compression()}')
+    print(f'Negotiated server_hostname: {client.server_hostname}')
+    print(f'Negotiated shared_ciphers: {client.shared_ciphers()}')
+    print(f'Negotiated session: {client.session}')
 
     message = create_message(config)
     smtp = SMTP(client)
     smtp.hello()\
         .authorisation(config.name, config.password)\
         .build_header(config.mail, config.recipients)\
-        .send_data(create_message(config))\
+        .send_data(message)\
         .quit()
 
 
