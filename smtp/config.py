@@ -5,8 +5,8 @@ class Config:
     def __init__(self, filename: str):
         with open(filename, encoding='utf8') as config:
             conf = json.load(config)
-            self.mail_server = conf['mail_server']
-            self.port = conf['port']
+            self.mail_server = conf['mail_server'].split(':')[0]
+            self.port = int(conf['mail_server'].split(':')[-1])
             self.mail = conf['mail']
             self.fake_name = conf['name']
             self.name = conf['name']

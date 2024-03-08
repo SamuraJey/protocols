@@ -83,8 +83,21 @@ def main():
     config = Config('smtp/config.json')
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         client.connect((config.mail_server, config.port))
-        client = ssl.SSLContext().wrap_socket(sock=client)
+        client.send(request('EHLO server'))
+        print('Server:', client.recv(65535).decode().removesuffix('\n'))
+        client.send(request('STARTTLS'))
+        time.sleep(1)
+        print('Server:', client.recv(65535).decode().removesuffix('\n'))
+        client = ssl.wrap_socket(client, ssl_version=ssl.PROTOCOL_TLSv1_2)
+        client.settimeout(10)
 
+
+        
+
+    print(f'Negotiated SSL version: {client.version()}')
+    print(f'Negotiated cipher: {client.cipher()}')
+
+    message = create_message(config)
     smtp = SMTP(client)
     smtp.hello()\
         .authorisation(config.name, config.password)\
