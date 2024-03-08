@@ -80,7 +80,7 @@ def get_attachments(path: str) -> list:
 
 
 def main():
-    config = Config('smtp/config.json')
+    config = Config('smtp/config_go.json')
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         client.connect((config.mail_server, config.port))
         client = ssl.SSLContext().wrap_socket(sock=client)
