@@ -91,7 +91,7 @@ def main():
         client.send(request('STARTTLS'))
         time.sleep(0.5)
         print('Server:', client.recv(65535).decode().removesuffix('\n'))
-        client = ssl.wrap_socket(client)
+        client = ssl.SSLContext().wrap_socket(sock=client)
         client.settimeout(5)
 
     print(f'Negotiated SSL version: {client.version()}')
