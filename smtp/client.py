@@ -69,13 +69,15 @@ def create_message(config: Config) -> str:
 
     return f'{message.content}\r\n.\n'
 
+
 def get_attachments(path: str) -> list:
     attachments = []
     print(f"path: {path}")
     print(f"listdir: {os.listdir(str(path))}")
     for filename in os.listdir(str(path)):
-        if filename.lower().endswith(('.jpg','.jpeg', '.gif')):
-            attachments.append(Attachment(os.path.abspath(path + filename)).content)
+        if filename.lower().endswith(('.jpg', '.jpeg', '.gif')):
+            attachments.append(Attachment(
+                os.path.abspath(path + filename)).content)
     return attachments
 
 
@@ -89,12 +91,9 @@ def main():
         client.send(request('STARTTLS'))
         time.sleep(0.5)
         print('Server:', client.recv(65535).decode().removesuffix('\n'))
-        client = ssl.wrap_socket(client, ssl_version=ssl.PROTOCOL_TLSv1_2, do_handshake_on_connect=False)
-        client.settimeout(10)
-        client.do_handshake()
+        client = ssl.wrap_socket(client)
+        client.settimeout(5)
 
-
-        
     print(f'Negotiated SSL version: {client.version()}')
     print(f'Negotiated cipher: {client.cipher()}')
     print(f'Negotiated compression: {client.compression()}')
