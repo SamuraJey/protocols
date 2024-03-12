@@ -4,3 +4,6 @@ ok.txt
 test.py
 smtp/letter/*jpg
 */pass.txt
+smtp/config_ma.json
+smtp/config_go.json
+smtp/config_ya.json
