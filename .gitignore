@@ -2,4 +2,6 @@ smtp/config.json
 not_ok.txt
 ok.txt
 test.py
-smtp/letter/*jpg
+smtp/config_go.json
+smtp/pass.txt
+*.pyc

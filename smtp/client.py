@@ -14,8 +14,9 @@ def request(message: str) -> bytes:
 
 
 class SMTP:
-    def __init__(self, client: socket.socket):
+    def __init__(self, client: socket.socket, conf: Config):
         self._client = client
+        self._config = conf
 
     def hello(self) -> 'SMTP':
         self.__send('EHLO server\r\n')
@@ -48,8 +49,11 @@ class SMTP:
         self.__receive()
 
     def __receive(self):
-        print('Server:', self._client.recv(65535)
-              .decode().removesuffix('\n'))
+        if self._config.verbose:
+            print('Server:', self._client.recv(65535)
+                .decode().removesuffix('\n'))
+        else:
+            self._client.recv(65535)
 
     def quit(self):
         self.__send('QUIT')
@@ -71,8 +75,8 @@ def create_message(config: Config) -> str:
 
 def get_attachments(path: str) -> list:
     attachments = []
-    print(f"path: {path}")
-    print(f"listdir: {os.listdir(str(path))}")
+    # print(f"path: {path}")
+    # print(f"listdir: {os.listdir(str(path))}")
     for filename in os.listdir(str(path)):
         if filename.lower().endswith(('.jpg','.jpeg', '.gif')):
             attachments.append(Attachment(os.path.abspath(path + filename)).content)
@@ -85,7 +89,7 @@ def main():
         client.connect((config.mail_server, config.port))
         client = ssl.SSLContext().wrap_socket(sock=client)
 
-    smtp = SMTP(client)
+    smtp = SMTP(client, config)
     smtp.hello()\
         .authorisation(config.name, config.password)\
         .build_header(config.mail, config.recipients)\

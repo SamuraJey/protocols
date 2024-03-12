@@ -11,5 +11,6 @@
   "message_file": "smtp/letter/text.txt",
   "attachments": [
     "smtp/letter/"
-  ]
+  ],
+  "verbose":"True"
 }

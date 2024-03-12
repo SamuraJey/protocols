@@ -15,7 +15,7 @@ class Message:
             '\n--1234567890987654321'
         ]
         self._header = '\n'.join(header)
-        print(f"self._header: {self._header}")
+        # print(f"self._header: {self._header}")
         self._text = self.get_text(config.message_file)
         self._text = self._text.replace('\n.', '\n..')
 
