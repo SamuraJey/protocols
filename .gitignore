@@ -5,3 +5,5 @@ test.py
 smtp/config_go.json
 smtp/pass.txt
 *.pyc
+smtp/config_ya.json
+smtp/config_ma.json

@@ -5,14 +5,14 @@ from config import Config
 class Message:
     def __init__(self, config: Config):
         targets_address = ','.join(f'"{x}" <{x}>' for x in config.recipients)
-        self._boundary = f'1234567890987654321'
+        self._boundary = f'sIMpLe_BoUnDaRy_1234567890'
         subject = Base64.base64_from_string(config.subject or "No subject")
         header = [
             f'From: "{config.fake_name}" <{config.mail}>',
             f'To:{targets_address}',
             f'Subject: =?UTF-8?B?{subject}?=',
             f'Content-type: multipart/mixed; boundary={self._boundary}',
-            '\n--1234567890987654321'
+            f'\n--{self._boundary}'
         ]
         self._header = '\n'.join(header)
         # print(f"self._header: {self._header}")

@@ -16,7 +16,7 @@ class Config:
             self.subject = conf['subject']
             self.attachments = conf['attachments']
             self.verbose = self.to_bool(conf['verbose'])
-            print(conf['verbose'])
+            # print(conf['verbose'])
             
     def to_bool(self, string):
         if string == 'True':
