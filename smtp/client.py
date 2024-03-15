@@ -92,6 +92,19 @@ def get_attachments(path: str) -> list:
 
 def main():
     # Указываем путь до файла конфигурации
+    import argparse
+    # Плохая справка, но она есть.
+    parser = argparse.ArgumentParser(
+        description='SMTP Client\nThis is how your config.json should look like:\n\
+        {\n"mail_server": "smtp.gmail.com",\n"port": 465,\n"name": "NAME",\n"mail": "EMAIL@DOMAIN.COM",\n\
+        "password": "YOUR_PASSWORD",\n"subject": "SUBJECT",\n"recipients": [\n"EMAIL@DOMAIN.COM"\n],\n\
+        "message_file": "smtp/letter/text.txt",\n"attachments": [\n"smtp/letter/"\n],\n"verbose":"True"\n}\n\
+        Where: mail_server - smtp server address\nport - smtp server port\nname - your name\nmail - your email\n\
+        password - your password\nsubject - letter subject\nrecipients - list of recipients\n\
+        message_file - path to the message file\nattachments - path to the directory with attachments\n\
+        verbose - print server response if True or dont if False\n')
+
+    args = parser.parse_args()
     config = Config('smtp/config_go.json')
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
         client.connect((config.mail_server, config.port))
