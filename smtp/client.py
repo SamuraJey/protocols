@@ -100,7 +100,7 @@ def main():
 
     smtp = SMTP(client, config)
     message = create_message(config)
-    message_size = len(message.content[:-2].encode('utf-8'))
+    message_size = len(message[:-2].encode('utf-8'))
 
     smtp.hello()\
         .authorisation(config.name, config.password)\
