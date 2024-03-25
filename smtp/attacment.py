@@ -8,12 +8,7 @@ class Attachment:
     def __init__(self, filename: str):
         file_extension = os.path.splitext(filename)[1]
         content_type = mimetypes.types_map[file_extension]
-        if '\\' in filename:
-            name = filename.split('\\')[-1]
-        elif '/' in filename:
-            name = filename.split('/')[-1]
-        else:
-            name = filename
+        name = os.path.basename(filename)
         # base64_filename = f'"{Base64.base64_from_string(name)}"'
         base64_attachment = Base64.base64_from_file(filename)
         content = [

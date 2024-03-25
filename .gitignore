@@ -7,3 +7,4 @@ smtp/pass.txt
 *.pyc
 smtp/config_ya.json
 smtp/config_ma.json
+*.docx
