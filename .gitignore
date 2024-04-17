@@ -8,3 +8,4 @@ smtp/pass.txt
 smtp/config_ya.json
 smtp/config_ma.json
 *.docx
+smtp/config_mail.json
