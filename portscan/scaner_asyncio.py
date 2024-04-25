@@ -3,46 +3,52 @@ import sys
 import asyncio
 import time
 from asyncio import Queue
+import asyncio_udp as asudp
 
-MAX_CONNECTIONS = 1000 
-
+MAX_CONNECTIONS = 1500 
+closed_ports = []
+open_ports = []
 async def tcp_scanner(port: int, host: str) -> None:
     try:
-        reader, writer = await asyncio.wait_for( asyncio.open_connection(host, port), timeout=0.5)
+        reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=0.5)
         writer.write(b'kek\r\n\r\n')
         # await writer.drain()
         data = await reader.read(1024)
         if data:
-            print(f'data: {data}')
+            print(f'data: {data.decode()}')
         print(f'TCP Open {port} {define_protocol(data)}')
+        # open_ports.append(port)
         writer.close()
         await writer.wait_closed()
-    except ConnectionRefusedError as e:
-        logging.error(f'Connection refused {port}: {e}')
-    except TimeoutError as exp:
-        logging.error(f'Timeout Error123 scanning port {port}. Exception: {exp}')
-    except asyncio.TimeoutError as exp:
-        logging.error(f'Timeout Error scanning port {port}. Exception: {exp}')
-
+    except TimeoutError as expt:
+        # logging.error(f'Timeout Error while scanning port {port}. Port probably closed.')
+        # closed_ports.append(port)
+        pass
     except Exception as e:
-        logging.error(f'Error scanning port {port}. Exception: {e}')
-        # print(f'type(e): {type(e)}')
-        
+        logging.error(f'Error while scanning port {port}. Exception description: {e} Exception type: {type(e)}')
+
 
 async def udp_scanner(port: int, host: str) -> None:
     try:
-        reader, writer = await asyncio.open_connection(host, port, proto=asyncio.DatagramProtocol)
-        writer.write(b'kek')
-        await writer.drain()
-        data, _ = await reader.read(1024)
+        # print(f"host: {host}, type of host: {type(host)}")
+        # print(f"port: {port}, type of port: {type(port)}")
+        remote = await asudp.open_remote_endpoint(host=host, port=port)
+        remote.send(b'kek\r\n\r\n')
+        data = await remote.receive()
+        # try:
+        #     reader, writer = await asyncio.open_connection(str(host), int(port), proto=asyncio.DatagramProtocol)
+        # except Exception as e:
+        #     logging.error(f'FIRSTrror while scanning port {port}. Exception description: {e} Exception type: {type(e)}')
+
+        # writer.write(b'kek\r\n\r\n')
+        # # await writer.drain()
+        # data, _ = await reader.read(1024)
         if data:
             print(f'data: {data}')
         print(f'UDP Open {port} {define_protocol(data)}')
-        writer.close()
-        await writer.wait_closed()
+        remote.close()
     except Exception as e:
-        pass
-        # print(f'Error scanning port {port}: {e}')
+        logging.error(f'YDPError while scanning port {port}. Exception description: {e} Exception type: {type(e)}')
 
 def define_protocol(data: bytes) -> str:
     protocol = 'Unknown'
@@ -68,8 +74,8 @@ async def worker(queue: Queue, host: str) -> None:
 
         # print(f"Starting scanning on host: {host} port: {port} ")
         
-        await tcp_scanner(int(port), host)
-        # await udp_scanner(port, host)
+        # await tcp_scanner(int(port), host)
+        await udp_scanner(int(port), host)
         queue.task_done()
         # print(f"Finished scanning on host: {host} port: {port} ")
 
@@ -95,17 +101,19 @@ async def main():
         
         for task in tasks:
             task.cancel()
-        
+
         await asyncio.gather(*tasks, return_exceptions=True)  # Ожидание завершения всех задач
-        
     else:
         print('Неправильный ввод аргументов')
         sys.exit(-1)
 
 if __name__ == '__main__':
     start_time = time.time()
+    print('Starting')
     try:
         asyncio.run(main())
     except Exception as e:
-        print(e)
-    print(f'Execution time: {time.time() - start_time:.2f} seconds')
+        logging.error(f'Error while running main. Exception description: |{e}| Exception type: {type(e)}')
+    end_time = time.time()
+
+    print(f'Execution time: {(end_time - start_time):.2f} seconds')
