@@ -4,22 +4,28 @@ import sys
 
 def scan_udp_port(host, port):
     # Создаем raw сокет
-    raw_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-
+    dest_addr = socket.gethostbyname(host)
+    icmp = socket.getprotobyname('icmp')
+    udp = socket.getprotobyname('udp')
+    ttl = 50
+    recv_socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
+    send_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, udp)
+    send_socket.setsockopt(socket.SOL_IP, socket.IP_TTL, ttl)
+    recv_socket.bind(("", port))
+    send_socket.sendto(b"", (host, port))
     # Устанавливаем таймаут для получения ответа
-    raw_socket.settimeout(3)
+    
     try:
         # Отправляем UDP пакет на указанный хост и порт
-        raw_socket.sendto(b'', (host, port))
+        data, curr_addr = recv_socket.recvfrom(1024)
 
         # Получаем ответ
-        data, addr = raw_socket.recvfrom(1024)
         print("data: ", data)
         # Парсим ICMP заголовок
         icmp_header = data[20:28]
-        print(icmp_header)
-        icmp_type, code, checksum, packet_id, sequence = struct.unpack("!BBHHH", icmp_header)
         
+        icmp_type, code, checksum, packet_id, sequence = struct.unpack("!BBHHH", icmp_header)
+        print(icmp_type)
         # Проверяем тип ICMP пакета
         if icmp_type == 3 and code == 3:
             print(f"Порт {port} недоступен")
@@ -29,8 +35,10 @@ def scan_udp_port(host, port):
         print(data)
         print(f"Порт {port} открыт")
     
+    
     # Закрываем сокет
-    raw_socket.close()
+    send_socket.close()
+    recv_socket.close()
 
 # scan_udp_port("127.0.0.1", 1234)
 # sys.exit(0)
