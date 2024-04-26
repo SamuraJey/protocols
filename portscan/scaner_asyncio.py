@@ -74,8 +74,8 @@ async def worker(queue: Queue, host: str) -> None:
 
         # print(f"Starting scanning on host: {host} port: {port} ")
         
-        # await tcp_scanner(int(port), host)
-        await udp_scanner(int(port), host)
+        await tcp_scanner(int(port), host)
+        # await udp_scanner(int(port), host)
         queue.task_done()
         # print(f"Finished scanning on host: {host} port: {port} ")
 
