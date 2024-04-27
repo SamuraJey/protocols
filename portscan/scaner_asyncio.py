@@ -1,4 +1,6 @@
 import logging
+import socket
+import struct
 import sys
 import asyncio
 import time
@@ -28,27 +30,34 @@ async def tcp_scanner(port: int, host: str) -> None:
         logging.error(f'Error while scanning port {port}. Exception description: {e} Exception type: {type(e)}')
 
 
-async def udp_scanner(port: int, host: str) -> None:
+async def udp_scanner(port, host):
     try:
-        # print(f"host: {host}, type of host: {type(host)}")
-        # print(f"port: {port}, type of port: {type(port)}")
-        remote = await asudp.open_remote_endpoint(host=host, port=port)
-        remote.send(b'kek\r\n\r\n')
-        data = await remote.receive()
-        # try:
-        #     reader, writer = await asyncio.open_connection(str(host), int(port), proto=asyncio.DatagramProtocol)
-        # except Exception as e:
-        #     logging.error(f'FIRSTrror while scanning port {port}. Exception description: {e} Exception type: {type(e)}')
+        # Создаем raw socket для получения ICMP пакетов
+        sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+        sock.settimeout(2)
 
-        # writer.write(b'kek\r\n\r\n')
-        # # await writer.drain()
-        # data, _ = await reader.read(1024)
-        if data:
-            print(f'data: {data}')
-        print(f'UDP Open {port} {define_protocol(data)}')
-        remote.close()
+        # Создаем UDP-сокет для отправки пустых пакетов
+        udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        udp_sock.settimeout(2)
+
+        # Отправляем пустой UDP-пакет
+        await asyncio.get_event_loop().sock_sendto(udp_sock, b'wdkomwokweokdwdewd', (host, port))
+
+        try:
+            # Пытаемся получить ответ от сервера
+            data, addr = await asyncio.get_event_loop().sock_recvfrom(sock, 1024)
+            icmp_header = data[20:28]
+            # Проверяем, является ли полученный пакет ICMP пакетом "Port Unreachable"
+            icmp_type, code, checksum, id, seq = struct.unpack('!bbHHh', icmp_header)
+            if icmp_type == 3 or code == 3:
+                print(f"Port {port} is closed")
+            else:
+                print(f"Port {port} is open")
+        except socket.timeout:
+            # Если нет ответа, то порт открыт
+            print(f"Port {port} is open")
     except Exception as e:
-        logging.error(f'YDPError while scanning port {port}. Exception description: {e} Exception type: {type(e)}')
+        print(f"Error scanning port123 {port}: {e}")
 
 def define_protocol(data: bytes) -> str:
     protocol = 'Unknown'
@@ -68,13 +77,14 @@ def define_protocol(data: bytes) -> str:
         protocol = 'SSH'
     return protocol
 
-async def worker(queue: Queue, host: str) -> None:
+async def worker(queue: Queue, host: str, mode: str) -> None:
     while True:
         port = await queue.get()
-
         # print(f"Starting scanning on host: {host} port: {port} ")
-        
-        await tcp_scanner(int(port), host)
+        if mode.lower() == 'tcp':
+            await tcp_scanner(int(port), host)
+        elif mode.lower() == 'udp':
+            await udp_scanner(int(port), host)
         # await udp_scanner(int(port), host)
         queue.task_done()
         # print(f"Finished scanning on host: {host} port: {port} ")
@@ -95,7 +105,7 @@ async def main():
         
         tasks = []
         for _ in range(MAX_CONNECTIONS):
-            tasks.append(asyncio.create_task(worker(queue, host)))
+            tasks.append(asyncio.create_task(worker(queue, host, "udp")))
         
         await queue.join()  # Ожидание завершения всех задач в очереди
         
