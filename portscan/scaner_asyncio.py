@@ -93,8 +93,9 @@ async def udp_scanner(port: int, host: str, well_known_ports: dict) -> None:
         # Создаем raw socket для получения ICMP пакетов
         sock = socket.socket(
             socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-        # sock.bind(("192.168.1.40", port))
+        sock.bind(("", port))
         sock.settimeout(1.5)
+        
 
         # Создаем UDP-сокет для отправки пустых пакетов
         udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -124,9 +125,8 @@ async def udp_scanner(port: int, host: str, well_known_ports: dict) -> None:
                 except KeyError:
                     print(
                         f'UDP Port {port} is probably open, but application protocol is Unknown')
-
     except Exception as e:
-        print(f'UDP Error scanning port {port}: {type(e)}')
+        print(f'UDP Error scanning port {port}: {e}')
 
 
 def define_protocol(data: bytes) -> str:
