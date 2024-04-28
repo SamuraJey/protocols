@@ -1,6 +1,6 @@
 import socket
 import struct
-import time
+import time 
 
 def scan_udp_port(host, port, timeout=3.0):
     """
