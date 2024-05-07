@@ -1,13 +1,7 @@
-smtp/config.json
-not_ok.txt
-ok.txt
+
 test.py
-smtp/config_go.json
-smtp/pass.txt
 *.pyc
-smtp/config_ya.json
-
 *.docx
-
-config*.json
+config*.*
 secret*.*
+.vscode/

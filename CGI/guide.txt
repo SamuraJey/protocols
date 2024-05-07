@@ -1,0 +1,33 @@
+1. Устанавливаем себе линукс (ну или апаче веб сервер на винду, но тут уж сами разбирайтесь)
+2. открываем терминал
+3. sudo apt install apache2
+4. проверяем, что апаче установился, на localhost должен появится приветсвенный сайт.
+5. в терминале пишем sudo a2enmod cgi
+6. sudo systemctl restart apache2
+7. cd /usr/lib/cgi-bin
+8. sudo touch script.py
+9. любым тектовым редактором открываете script.py (например sudo nano script.py)
+10. вставляете туда вот такой код
+
+#!/usr/bin/python
+import cgi
+
+params = cgi.FieldStorage()
+
+print("Content-type:text/html\n\n")
+print()
+
+print("<h1>Query params:</h1>")
+print("<ul>")
+for param in params:
+    print("<li>")
+    print(f"{param}: {params[param].value}")
+    print("</li>")
+print("</ul>")
+
+11. sudo chmod 705 script.py
+12. идете тестировать в браузере http://localhost/cgi-bin/script.py?name=Sergey&surname=Zaremba&group=MO-201&comment=Microsoft_IIS_is_BAD - там будет страничка со всеми квери парамс которые вы зададите и заголовком.
+
+
+p.s. CGI такое старое, что из питона 3.13 выпилят вот эту либу CGI. А основные гайды по этому методу были сделаны ~10 лет назад, а то и раньше.
+p.s.2 Сильные духом, могут сделать на Bash
