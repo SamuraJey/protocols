@@ -1,14 +1,17 @@
+import logging
 import socket
 import ssl
 import json
-# import base64
+
 import email
 from email.header import decode_header
 from base64 import b64decode
 import re
 import sys
 from time import sleep
-from prettytable import PrettyTable
+import prettytable
+
+DEBUG = True
 
 class IMAPClient:
     def __init__(self, config_file):
@@ -61,13 +64,8 @@ class IMAPClient:
         self.send_command('SELECT INBOX')
         kek = self.send_command(f'FETCH {self.n1}:{self.n2} BODY[HEADER]', to_print=False)
         headers = kek.split('\r\n\r\n)\r\n')
-        # while True:
-        #     response = self.read_response()
-        #     if response.startswith('OK'):
-        #         break
-        #     headers.append(response)
-
         emails = []
+
         for header in headers:
             if header.startswith('* '):
                 header_data = header.split('\r\n', 1)[1]
@@ -78,13 +76,12 @@ class IMAPClient:
                     else:
                         from_header = "No_from_header"
                 
-                # print(f"\n\nfrom_header: {from_header}\n\n")
                     if email_msg['Subject'] is not None:
                         subject_header = decode_header(email_msg['Subject'])
                     else:
                         subject_header = "No_subject_header"
                 except TypeError as e:
-                    print(f"Error TypeError {e}")
+                    logging.error(f"Error TypeError {e}")
                     continue
                 from_who_answer = ""
 
@@ -103,40 +100,21 @@ class IMAPClient:
                                     print(e)
                         except LookupError as exp:
                             from_who_answer += "Unknown_encoding"
-                            print(f"Wrong encoding is encounterd in From field: {part[-1]}\n{exp}")
-                            # print("Wrong encoding is encounterd in From field: " + part[-1] + "\n" + exp)
-                            print(f"Error in header: {from_header}")
-                            # print("Error in header: " + from_header)
+                            logging.error(f"Wrong encoding is encounterd in From field: {part[-1]}\n{exp}")
+                            logging.error(f"Error in header: {from_header}")
 
 
-
-                # try:
-                #     # from_header parser
-                #     if type(from_header[0][0]) is str:
-                #         from_who = from_header[0][0]
-                #         # print("if headear" + from_who)
-                #     elif type(from_header[0][0]) is bytes: #or type(from_header[0][0]) is bytearray:
-                #         if from_header[0][-1] is not None:
-                #             our_encoding = from_header[0][-1]
-                #         from_who = from_header[0][0].decode(our_encoding)
-                #         # print("elif header" + from_who)
-                # except LookupError:
-                #     print("Wrong encoding is encounterd in From field: " + our_encoding)
-                #     print("Kekero123 " + from_header)
-                #     from_who = "Encoding_error"
                 
                 try:
                     if type(subject_header[0][0]) is str:
                         subject = subject_header[0][0]
-                        # print("if subcjet" + subject)
                     elif type(subject_header[0][0]) is bytes:
                         if subject_header[0][-1] is not None:
                             our_encoding = subject_header[0][-1]
                         subject = subject_header[0][0].decode(our_encoding)
-                        # print("elif subcjet" + subject)
                 except LookupError:
-                    print(f"Wrong encoding is encounterd in subject field: {our_encoding}")
-                    print(f"answerrr Kekero123 {subject_header}")
+                    logging.error(f"Wrong encoding is encounterd in subject field: {our_encoding}")
+                    logging.error(f"answerrr Kekero123 {subject_header}")
                     subject = "Encoding_error"
                 # print(subject_header)
                 # trying to get attachments
@@ -149,11 +127,6 @@ class IMAPClient:
                     'Size': email_msg['Content-Length'],
                     "Message-Id": email_msg["Message-Id"]
                 })
-        # try:
-        #     attachments = self.get_attachments()
-        # except Exception as e:
-        #     print(f"Error in getting attachments: {e}")
-        #     attachments = []
         return emails
 
 
@@ -213,25 +186,56 @@ client = IMAPClient('imap/cfg.json')
 client.connect()
 
 # Получение заголовков писем
-headers = client.get_headers()
-headers = mime_encoding_decode(headers)
-
-# Вывод заголовков в виде таблицы
-table = PrettyTable()
-table.field_names = ['From', 'To', 'Subject', 'Date', 'Size', 'Message-Id']
-
-
-
-# Получение информации о вложениях
+messages = client.get_headers()
+messages = mime_encoding_decode(messages)
 attachments = client.get_attachments()
-# # print(attachments)
-for attachment in attachments:
-    # print(f"Filename: {attachment['filename']}")
-    print(f"Filename: {attachment['filename']}, Size: {attachment['size']/1024:.2f} KB, Message-Id: {attachment['Message-Id']}")
+if DEBUG:
+    with open('messages_before.json', 'w') as f:
+            json.dump(messages, f, indent=4)
 
-for header in headers:
-    table.add_row([header['From'], header['To'], header['Subject'], header['Date'], header['Size'], header["Message-Id"]])
+msg_dict = {}
+for message in messages:
+    msg_dict[message["Message-Id"]] = message
+
+for att in attachments:
+    msg_dict[att["Message-Id"]].setdefault("Attachment", []).append(att)
+
+table = prettytable.PrettyTable()
+table.field_names = ['From', 'To', 'Subject', 'Date', 'Size', 'Attachments']
+
+for msg_id, msg_data in msg_dict.items():
+    attachments = msg_data.get('Attachment', [])
+    attachment_data = ', '.join([f"{att['filename']} ({att['size']/1024:.1f}kB)" for att in attachments])
+    table.add_row([
+        msg_data['From'],
+        msg_data['To'],
+        msg_data['Subject'],
+        msg_data['Date'],
+        msg_data['Size'],
+        # msg_data['Message-Id'],
+       attachment_data
+    ])
+
+if DEBUG:
+    with open('messages_after.json', 'w') as f:
+            json.dump(messages, f, indent=4)
+    with open('output.txt', 'w', encoding='utf-8') as f:
+        f.write(str(table))
+
 print(table)
-# print(headers)
+
+# Таблица получается большой, лучше бы её записать в файл - читать удобнее, но в задаче написано выводить на экран
+
+# with open('output.txt', 'w', encoding='utf-8') as f:
+#     f.write(str(table))
+
 client.close()
 sys.exit(0)
+
+'''
+если захотим сохранить данные в json
+with open('attachments.json', 'w') as f:
+        json.dump(attachments, f, indent=4)
+with open('messages.json', 'w') as f:
+        json.dump(messages, f, indent=4)
+'''
