@@ -9,7 +9,7 @@ TIME1970 = 2208988800
 def sntp_client():
     sock = socket.socket(socket.AF_INET,
                          socket.SOCK_DGRAM)
-    sock.connect(('localhost', 123))
+    sock.connect(('localhost', 1233))
     data = '\x1b' + 47 * '\0'
     time.sleep(1)
     print('Sending request to', NTP_SERVER)

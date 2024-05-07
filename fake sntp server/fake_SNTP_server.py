@@ -91,6 +91,7 @@ class Server:
 
     def run(self):
         try:
+            print("Server started")
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.bind((self._IP, self._PORT))
         except OSError:

@@ -4,7 +4,7 @@ from threading import Thread
 import time
 import ssl
 
-kek = time.time()
+
 def tcp_scanner(port, host):
     try:
         tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -89,9 +89,12 @@ def main():
         exit(-1)
 
 if __name__ == '__main__':
+    kek1 = time.time()
     main()
-kek2 = time.time()
-print(kek2 - kek)
+    kek2 = time.time()
+    print(kek2 - kek1)
+
+
 """
 sudo python scaner.py 1 65000 TCP localhost - порты TCP
 sudo python scaner.py 587 600 TCP smtp.mail.ru - SMTP

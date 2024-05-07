@@ -6,6 +6,8 @@ smtp/config_go.json
 smtp/pass.txt
 *.pyc
 smtp/config_ya.json
-smtp/config_ma.json
+
 *.docx
-smtp/config_mail.json
+
+config*.json
+secret*.*
