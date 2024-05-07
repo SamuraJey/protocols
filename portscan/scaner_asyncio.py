@@ -93,7 +93,7 @@ async def udp_scanner(port: int, host: str, well_known_ports: dict) -> None:
         # Создаем raw socket для получения ICMP пакетов
         sock = socket.socket(
             socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-        sock.bind(("", port))
+        sock.bind(("", 0))
         sock.settimeout(1.5)
         
 
@@ -102,8 +102,11 @@ async def udp_scanner(port: int, host: str, well_known_ports: dict) -> None:
         udp_sock.settimeout(1.5)
 
         # Отправляем UDP-пакет
-        await asyncio.get_event_loop().sock_sendto(udp_sock, b'wdkomwokweokdwdewd', (host, port))
-
+        try:
+            await asyncio.get_event_loop().sock_sendto(udp_sock, b'wdkomwokweokdwdewd', (host, port))
+            print("udp send done")
+        except Exception:
+            print("error while sending udp packet")
         try:
             # Пытаемся получить ответ от сервера
             data, addr = await asyncio.get_event_loop().sock_recvfrom(sock, 1024)
