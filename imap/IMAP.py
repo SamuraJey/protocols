@@ -60,20 +60,30 @@ class IMAPClient:
         self.connected = True
 
     def read_response(self, to_print=True):
-        # response = b''
         BUFFER_SIZE = 4096*2
         response = bytearray()
+        self.socket.settimeout(2.0)  # Set a timeout of 2 seconds
         while True:
-            sleep(0.05)
-            data = self.socket.recv(BUFFER_SIZE)
-            if data.endswith(b'\r\n'):
+            try:
+                data = self.socket.recv(BUFFER_SIZE)
+                if not data:
+                    break
+                response.extend(data)
+            except socket.timeout:
                 break
-            response.extend(data)
+        self.socket.settimeout(None)  # Remove the timeout
         if to_print:
-            print('Received: ')
-            print(data.decode())
-
-        return response.decode().strip()
+            try:
+                print('Received: ')
+                print(response.decode())
+            except UnicodeDecodeError as e:
+                logging.error(f"Error while decoding: {e}")
+                print("Error while decoding")
+        try:
+            return response.decode().strip()
+        except UnicodeDecodeError as e:
+            logging.error(f"Error while decoding: {e}")
+            return response.decode(errors='ignore').strip()
 
     def send_command(self, command, to_print=True):
         self.socket.sendall(f'{self.current_command} {command}\r\n'.encode())
@@ -81,14 +91,18 @@ class IMAPClient:
             str(int(self.current_command[1:]) + 1).zfill(3)
         print(f'Sent: {command}')
         # Для того, чтобы сервер успел обработать запрос. На меньших значениях может выдавать бред.
-        sleep(2)
+        sleep(0.3)
         return self.read_response(to_print=to_print)
 
     def get_emails(self):
         self.send_command('SELECT INBOX')
-        kek = self.send_command(
-            f'FETCH {self.n1}:{self.n2} RFC822', to_print=False)
-        email_list = kek.split('\r\n)\r\n')
+
+        email_list = []
+        for msg_id in range(int(self.n1), int(self.n2) + 1):
+            response = self.send_command(f'FETCH {msg_id} BODY.PEEK[]', to_print=False)
+            email_list.append(response)
+
+
         # print(headers)
         emails = []
 
