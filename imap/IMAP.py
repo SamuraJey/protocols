@@ -60,7 +60,7 @@ class IMAPClient:
         self.connected = True
 
     def read_response(self, to_print=True):
-        BUFFER_SIZE = 4096*2
+        BUFFER_SIZE = 4096*4
         response = bytearray()
         self.socket.settimeout(2.0)  # Set a timeout of 2 seconds
         while True:
@@ -90,8 +90,7 @@ class IMAPClient:
         self.current_command = self.current_command[0] + \
             str(int(self.current_command[1:]) + 1).zfill(3)
         print(f'Sent: {command}')
-        # Для того, чтобы сервер успел обработать запрос. На меньших значениях может выдавать бред.
-        sleep(0.3)
+        sleep(0.2)
         return self.read_response(to_print=to_print)
 
     def get_emails(self):
@@ -246,16 +245,17 @@ def main():
     list_of_dictionaries = merge_emails_with_attachments(messages, attachments)
 
     table = prettytable.PrettyTable()
-    table.field_names = ['From', 'To', 'Subject',
+    table.field_names = ['№','From', 'To', 'Subject',
                          'Date', 'Size(in bytes)', 'Attachments']
-
+    counter = 1
     for item in list_of_dictionaries:
-        attachments = dict(item).get('Attachment', [])
+        attachments = item.get('Attachment', [])
         attachment_data = ', '.join(
             [f"{att['filename']} ({att['size']/1024:.1f} kB)" for att in attachments]) if attachments else None
         size_in_kb = int(item.get("Size"))/1024 if item.get("Size") else None
-        table.add_row([item.get("From"), item.get("To"), item.get("Subject"),
+        table.add_row([counter, item.get("From"), item.get("To"), item.get("Subject"),
                        item.get("Date"), f"{size_in_kb:.1f} kB", attachment_data])
+        counter += 1
 
     if DEBUG:
         with open('messages_after.json', 'w') as f:
@@ -266,12 +266,12 @@ def main():
     print(table)
 
     # Таблица получается большой, лучше бы её записать в файл - читать удобнее,
-    # но в задаче написано выводить на экран
+    # но в задаче написано выводить на экран, но я все равно записал в файл =)
 
     with open('output.txt', 'w', encoding='utf-8') as f:
         f.write(str(table))
 
-    # client.close()
+    client.close()
     sys.exit(0)
 
 
