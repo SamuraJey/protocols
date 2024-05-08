@@ -50,7 +50,8 @@ class IMAPClient:
             context.verify_mode = ssl.CERT_REQUIRED
             context.check_hostname = True
             context.load_default_certs()
-            self.socket = context.wrap_socket(self.socket, server_hostname=self.host)
+            self.socket = context.wrap_socket(
+                self.socket, server_hostname=self.host)
             # self.socket = ssl.wrap_socket(self.socket)
         self.socket.connect((self.host, self.port))
         self.read_response()  # Читаем приветственное сообщение сервера
@@ -79,12 +80,14 @@ class IMAPClient:
         self.current_command = self.current_command[0] + \
             str(int(self.current_command[1:]) + 1).zfill(3)
         print(f'Sent: {command}')
-        sleep(2) # Для того, чтобы сервер успел обработать запрос. На меньших значениях может выдавать бред.
+        # Для того, чтобы сервер успел обработать запрос. На меньших значениях может выдавать бред.
+        sleep(2)
         return self.read_response(to_print=to_print)
 
     def get_emails(self):
         self.send_command('SELECT INBOX')
-        kek = self.send_command(f'FETCH {self.n1}:{self.n2} RFC822', to_print=False)
+        kek = self.send_command(
+            f'FETCH {self.n1}:{self.n2} RFC822', to_print=False)
         email_list = kek.split('\r\n)\r\n')
         # print(headers)
         emails = []
@@ -141,27 +144,20 @@ class IMAPClient:
                         f"Subject header with error: {subject_header}")
                     subject = "Encoding_error"
 
-                
                 emails.append({
                     'From': from_who_answer,
                     'To': email_msg['To'],
                     'Subject': subject,
                     'Date': email_msg['Date'],
-                    'Size': str(len(header_data.encode())), 
+                    'Size': str(len(header_data.encode())),
                     "Message-Id": email_msg["Message-Id"]
                 })
         attachemnt_data = self.get_attachments(email_list)
-        # merged_emails = self.merge_emails_with_attachments(emails, attachemnt_data)
-        # print(f"KEKERO ATTACHMENT DATA: {attachemnt_data}")
-        # self.send_command('CLOSE')
         return emails, attachemnt_data
-
 
     def get_attachments(self, email_list=None):
         if not email_list:
             return None
-        # response = self.read_response(to_print=False)
-        # print(attachments_raw)
         attachments = []
         for response in email_list:
             if response.startswith('* '):
@@ -211,23 +207,22 @@ def mime_encoding_decode(given_headers: list) -> list:
                 item[key_to_change] = part_1 + " " + part_2
     return given_headers
 
+
 def merge_emails_with_attachments(emails, attachments):
     for email in emails:
         for attachment in attachments:
             if email["Message-Id"] == attachment["Message-Id"]:
                 email.setdefault("Attachment", []).append(attachment)
     return emails
+
+
 def main():
     client = IMAPClient('imap/config_mail_ru.json')
     client.connect()
 
-    # Получение заголовков писем
+
     messages, attachments = client.get_emails()
-    # print(f"KEKERO MESSAGES: {messages}")
-    # print(f"KEKERO ATTACHMENTS: {attachments}")
-    # sys.exit(0)
     messages = mime_encoding_decode(messages)
-    # attachments = client.get_attachments()
 
     if DEBUG:
         with open('messages_before.json', 'w') as f:
@@ -235,9 +230,10 @@ def main():
 
     # Собираем все в один словарь
     list_of_dictionaries = merge_emails_with_attachments(messages, attachments)
-    
+
     table = prettytable.PrettyTable()
-    table.field_names = ['From', 'To', 'Subject', 'Date', 'Size(in bytes)', 'Attachments']
+    table.field_names = ['From', 'To', 'Subject',
+                         'Date', 'Size(in bytes)', 'Attachments']
 
     for item in list_of_dictionaries:
         attachments = dict(item).get('Attachment', [])
@@ -245,7 +241,7 @@ def main():
             [f"{att['filename']} ({att['size']/1024:.1f} kB)" for att in attachments]) if attachments else None
         size_in_kb = int(item.get("Size"))/1024 if item.get("Size") else None
         table.add_row([item.get("From"), item.get("To"), item.get("Subject"),
-                    item.get("Date"), f"{size_in_kb:.1f} kB", attachment_data])
+                       item.get("Date"), f"{size_in_kb:.1f} kB", attachment_data])
 
     if DEBUG:
         with open('messages_after.json', 'w') as f:
@@ -255,14 +251,15 @@ def main():
 
     print(table)
 
-    # Таблица получается большой, лучше бы её записать в файл - читать удобнее, 
+    # Таблица получается большой, лучше бы её записать в файл - читать удобнее,
     # но в задаче написано выводить на экран
 
-    # with open('output.txt', 'w', encoding='utf-8') as f:
-    #     f.write(str(table))
+    with open('output.txt', 'w', encoding='utf-8') as f:
+        f.write(str(table))
 
-    client.close()
+    # client.close()
     sys.exit(0)
+
 
 if __name__ == '__main__':
     main()
