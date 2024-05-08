@@ -1,8 +1,8 @@
 {
     "ssl": true,
     "server": "imap.mail.ru:993",
-    "n": "4222",
-    "n2": "4224",
+    "start_id": "4222",
+    "end_id": "4224",
     "user": "hehe_haha@mail.ru",
     "password": "YOUR_PASSWORD"
 }

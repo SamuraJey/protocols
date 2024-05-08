@@ -13,18 +13,29 @@ import prettytable
 
 DEBUG = True
 
+
 class IMAPClient:
     def __init__(self, config_file):
-        with open(config_file) as f:
-            config = json.load(f)
+        try:
+            with open(config_file) as f:
+                config = json.load(f)
+        except FileNotFoundError as e:
+            logging.error(f"File not found: {config_file}")
+            sys.exit(1)
+        except json.JSONDecodeError as e:
+            logging.error(f"Error while reading json file: {e}")
+            sys.exit(1)
+        except PermissionError as e:
+            logging.error(f"Permission denied: {e}")
+            sys.exit(1)
 
         self.current_command = "A000"
         self.ssl_enabled = config.get('ssl')
         self.server = config.get('server').split(':')
         self.host = self.server[0]
-        self.port = int(self.server[1]) if len(self.server) > 1 else 143
-        self.n1 = config.get('n', '1')
-        self.n2 = config.get('n2', '*')
+        self.port = int(self.server[1]) if len(self.server) == 2 else 143
+        self.n1 = config.get('start_id', '1')
+        self.n2 = config.get('end_id', '*')
         self.user = config.get('user')
         self.password = config.get('password')
 
@@ -35,7 +46,12 @@ class IMAPClient:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         socket.setdefaulttimeout(3)
         if self.ssl_enabled:
-            self.socket = ssl.wrap_socket(self.socket)
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            context.verify_mode = ssl.CERT_REQUIRED
+            context.check_hostname = True
+            context.load_default_certs()
+            self.socket = context.wrap_socket(self.socket, server_hostname=self.host)
+            # self.socket = ssl.wrap_socket(self.socket)
         self.socket.connect((self.host, self.port))
         self.read_response()  # Читаем приветственное сообщение сервера
 
@@ -44,11 +60,11 @@ class IMAPClient:
 
     def read_response(self, to_print=True):
         response = b''
+        
         while True:
-            data = self.socket.recv(65000)
+            data = self.socket.recv(65535)
             response += data
             if data.endswith(b'\r\n'):
-                print("srabotal break")
                 break
         if to_print:
             print(response.decode())
@@ -56,14 +72,17 @@ class IMAPClient:
 
     def send_command(self, command, to_print=True):
         self.socket.sendall(f'{self.current_command} {command}\r\n'.encode())
-        self.current_command = self.current_command[0] + str(int(self.current_command[1:]) + 1).zfill(3)
+        self.current_command = self.current_command[0] + \
+            str(int(self.current_command[1:]) + 1).zfill(3)
         print(f'Sent: {command}')
+        sleep(3) # Для того, чтобы сервер успел обработать запрос. На меньших значениях может выдавать бред.
         return self.read_response(to_print=to_print)
 
     def get_headers(self):
         self.send_command('SELECT INBOX')
-        kek = self.send_command(f'FETCH {self.n1}:{self.n2} BODY[HEADER]', to_print=False)
-        headers = kek.split('\r\n\r\n)\r\n')
+        kek = self.send_command(f'FETCH {self.n1}:{self.n2} RFC822', to_print=False)
+        headers = kek.split('\r\n)\r\n')
+        # print(headers)
         emails = []
 
         for header in headers:
@@ -75,7 +94,7 @@ class IMAPClient:
                         from_header = decode_header(email_msg['From'])
                     else:
                         from_header = "No_from_header"
-                
+
                     if email_msg['Subject'] is not None:
                         subject_header = decode_header(email_msg['Subject'])
                     else:
@@ -89,7 +108,7 @@ class IMAPClient:
                     if type(part[0]) is str:
                         from_who_answer += part[0]
                     elif type(part[0]) is bytes:
-                        try: 
+                        try:
                             if part[-1] is not None:
                                 from_who_answer += part[0].decode(part[-1])
                             else:
@@ -100,11 +119,10 @@ class IMAPClient:
                                     print(e)
                         except LookupError as exp:
                             from_who_answer += "Unknown_encoding"
-                            logging.error(f"Wrong encoding is encounterd in From field: {part[-1]}\n{exp}")
+                            logging.error(
+                                f"Wrong encoding is encounterd in From field: {part[-1]}\n{exp}")
                             logging.error(f"Error in header: {from_header}")
 
-
-                
                 try:
                     if type(subject_header[0][0]) is str:
                         subject = subject_header[0][0]
@@ -113,26 +131,27 @@ class IMAPClient:
                             our_encoding = subject_header[0][-1]
                         subject = subject_header[0][0].decode(our_encoding)
                 except LookupError:
-                    logging.error(f"Wrong encoding is encounterd in subject field: {our_encoding}")
-                    logging.error(f"answerrr Kekero123 {subject_header}")
+                    logging.error(
+                        f"Wrong encoding is encounterd in subject field, encoding is: {our_encoding}")
+                    logging.error(
+                        f"Subject header with error: {subject_header}")
                     subject = "Encoding_error"
-                # print(subject_header)
-                # trying to get attachments
-                
+
                 emails.append({
                     'From': from_who_answer,
                     'To': email_msg['To'],
                     'Subject': subject,
                     'Date': email_msg['Date'],
-                    'Size': email_msg['Content-Length'],
+                    'Size': str(len(header_data.encode())), 
                     "Message-Id": email_msg["Message-Id"]
                 })
+        self.send_command('CLOSE')
         return emails
 
-
-    def get_attachments(self):
+    def get_attachments(self, email_list=None):
         self.send_command('SELECT INBOX')
-        kek = self.send_command(f'FETCH {self.n1}:{self.n2} (BODY.PEEK[])', to_print=False)
+        kek = self.send_command(
+            f'FETCH {self.n1}:{self.n2} (BODY.PEEK[])', to_print=False)
         attachments_raw = kek.split('\r\n)\r\n')
         # response = self.read_response(to_print=False)
         # print(attachments_raw)
@@ -141,7 +160,7 @@ class IMAPClient:
             if response.startswith('* '):
                 message_data = response.split('\r\n', 1)[1]
                 email_msg = email.message_from_bytes(message_data.encode())
-                
+
                 for part in email_msg.walk():
                     # print(part)
                     if part.get_content_maintype() == 'multipart':
@@ -163,74 +182,84 @@ class IMAPClient:
         self.socket.close()
         self.connected = False
 
+
 pattern_for_encoding = r"\?([^?]+)\?"
 pattern_for_text = r'=\?\S*\?B\?(.*?)\?=\S*'
+
 
 def mime_encoding_decode(given_headers: list) -> list:
     for item in given_headers:
         for value in item.values():
-            if value is None:
+            if value is None and (type(value) is not str or type(value) is not bytes):
                 continue
             match_encoding = re.search(pattern_for_encoding, value)
             match_text = re.search(pattern_for_text, value)
             if match_encoding:
                 encoding = match_encoding.group(1)
             if match_text:
-                key_to_change = list(item.keys())[list(item.values()).index(value)]
+                key_to_change = list(item.keys())[
+                    list(item.values()).index(value)]
                 part_1 = b64decode(match_text.group(1)).decode(encoding)
                 part_2 = value.split(match_text.group(1))[1].lstrip("?= ")
                 item[key_to_change] = part_1 + " " + part_2
     return given_headers
 
-client = IMAPClient('imap/cfg.json')
-client.connect()
+def main():
+    client = IMAPClient('imap/config_mail_ru.json')
+    client.connect()
 
-# Получение заголовков писем
-messages = client.get_headers()
-messages = mime_encoding_decode(messages)
-attachments = client.get_attachments()
-if DEBUG:
-    with open('messages_before.json', 'w') as f:
+    # Получение заголовков писем
+    messages = client.get_headers()
+    messages = mime_encoding_decode(messages)
+    attachments = client.get_attachments()
+
+    if DEBUG:
+        with open('messages_before.json', 'w') as f:
             json.dump(messages, f, indent=4)
 
-msg_dict = {}
-for message in messages:
-    msg_dict[message["Message-Id"]] = message
+    # Собираем все в один словарь
+    msg_dict = {}
+    for message in messages:
+        msg_dict[message["Message-Id"]] = message
 
-for att in attachments:
-    msg_dict[att["Message-Id"]].setdefault("Attachment", []).append(att)
+    for att in attachments:
+        msg_dict[att["Message-Id"]].setdefault("Attachment", []).append(att)
 
-table = prettytable.PrettyTable()
-table.field_names = ['From', 'To', 'Subject', 'Date', 'Size', 'Attachments']
+    table = prettytable.PrettyTable()
+    table.field_names = ['From', 'To', 'Subject', 'Date', 'Size(in bytes)', 'Attachments']
 
-for msg_id, msg_data in msg_dict.items():
-    attachments = msg_data.get('Attachment', [])
-    attachment_data = ', '.join([f"{att['filename']} ({att['size']/1024:.1f}kB)" for att in attachments])
-    table.add_row([
-        msg_data['From'],
-        msg_data['To'],
-        msg_data['Subject'],
-        msg_data['Date'],
-        msg_data['Size'],
-        # msg_data['Message-Id'],
-       attachment_data
-    ])
+    for msg_id, msg_data in msg_dict.items():
+        attachments = msg_data.get('Attachment', [])
+        attachment_data = ', '.join(
+            [f"{att['filename']} ({att['size']/1024:.1f}kB)" for att in attachments])
+        table.add_row([
+            msg_data['From'],
+            msg_data['To'],
+            msg_data['Subject'],
+            msg_data['Date'],
+            msg_data['Size'],
+            # msg_data['Message-Id'],
+            attachment_data
+        ])
 
-if DEBUG:
-    with open('messages_after.json', 'w') as f:
+    if DEBUG:
+        with open('messages_after.json', 'w') as f:
             json.dump(messages, f, indent=4)
-    with open('output.txt', 'w', encoding='utf-8') as f:
-        f.write(str(table))
+        with open('output.txt', 'w', encoding='utf-8') as f:
+            f.write(str(table))
 
-print(table)
+    print(table)
 
-# Таблица получается большой, лучше бы её записать в файл - читать удобнее, но в задаче написано выводить на экран
+    # Таблица получается большой, лучше бы её записать в файл - читать удобнее, но в задаче написано выводить на экран
 
-# with open('output.txt', 'w', encoding='utf-8') as f:
-#     f.write(str(table))
+    # with open('output.txt', 'w', encoding='utf-8') as f:
+    #     f.write(str(table))
 
-client.close()
-sys.exit(0)
+    client.close()
+    sys.exit(0)
+
+if __name__ == '__main__':
+    main()
 
 '''
 если захотим сохранить данные в json
