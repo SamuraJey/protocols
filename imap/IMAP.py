@@ -10,7 +10,8 @@ from base64 import b64decode
 import re
 import sys
 from time import sleep
-import lib.prettytable_init as prettytable # Using local copy of library because i can
+# Using local copy of library because i can
+import lib.prettytable_init as prettytable
 
 DEBUG = True
 
@@ -99,9 +100,9 @@ class IMAPClient:
 
         email_list = []
         for msg_id in range(int(self.n1), int(self.n2) + 1):
-            response = self.send_command(f'FETCH {msg_id} BODY.PEEK[]', to_print=False)
+            response = self.send_command(
+                f'FETCH {msg_id} BODY.PEEK[]', to_print=False)
             email_list.append(response)
-
 
         # print(headers)
         emails = []
@@ -234,7 +235,6 @@ def main():
     client = IMAPClient('imap/config_mail_ru.json')
     client.connect()
 
-
     messages, attachments = client.get_emails()
     messages = mime_encoding_decode(messages)
 
@@ -246,7 +246,7 @@ def main():
     list_of_dictionaries = merge_emails_with_attachments(messages, attachments)
 
     table = prettytable.PrettyTable()
-    table.field_names = ['№','From', 'To', 'Subject',
+    table.field_names = ['№', 'From', 'To', 'Subject',
                          'Date', 'Size(in bytes)', 'Attachments']
     counter = 1
     for item in list_of_dictionaries:
