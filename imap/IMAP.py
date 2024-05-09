@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# Made by: Sergey Zaremba MO-201
 import logging
 import socket
 import ssl
