@@ -9,7 +9,7 @@ from base64 import b64decode
 import re
 import sys
 from time import sleep
-import prettytable
+import prettytable_init as prettytable # Using local copy of library because i can
 
 DEBUG = True
 
