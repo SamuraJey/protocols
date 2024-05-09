@@ -2,14 +2,13 @@ import logging
 import socket
 import ssl
 import json
-
 import email
 from email.header import decode_header
 from base64 import b64decode
 import re
 import sys
 from time import sleep
-import prettytable_init as prettytable # Using local copy of library because i can
+import lib.prettytable_init as prettytable # Using local copy of library because i can
 
 DEBUG = True
 
