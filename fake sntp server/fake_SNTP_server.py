@@ -1,3 +1,6 @@
+#!/usr/bin/python
+
+# Made by: Sergey Zaremba MO-201
 import argparse
 import threading
 import time

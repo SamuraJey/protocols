@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/python
+
 # Made by: Sergey Zaremba MO-201
 import logging
 import socket
@@ -10,10 +11,11 @@ from base64 import b64decode
 import re
 import sys
 from time import sleep
+import os
 # Using local copy of library because i can
 import lib.prettytable_init as prettytable
 
-DEBUG = True
+DEBUG = False
 
 
 class IMAPClient:
@@ -269,8 +271,11 @@ def main():
     # Таблица получается большой, лучше бы её записать в файл - читать удобнее,
     # но в задаче написано выводить на экран, но я все равно записал в файл =)
 
-    with open('output.txt', 'w', encoding='utf-8') as f:
-        f.write(str(table))
+    if os.path.isfile('output.txt'):
+        print("output.txt already exists. Skipping writing file.")
+    else:
+        with open('output.txt', 'w', encoding='utf-8') as f:
+            f.write(str(table))
 
     client.close()
     sys.exit(0)
