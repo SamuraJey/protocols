@@ -23,7 +23,7 @@ class Message:
         self._text += f'\n--{self._boundary}\n{message}\n'
 
     def end(self):
-        self._text += f'\n--{self._boundary}--\n.\n'
+        self._text += f'\n--{self._boundary}--\n.'
 
     @property
     def content(self) -> str:

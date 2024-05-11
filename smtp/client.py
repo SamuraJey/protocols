@@ -1,3 +1,4 @@
+import logging
 import socket
 import ssl
 import time
@@ -22,42 +23,62 @@ class SMTP:
         self._config = conf
 
     def hello(self) -> 'SMTP':
-        self.__send('EHLO server\r\n')
+        self.__send('EHLO server')
         return self
 
     def authorisation(self, login: str, password: str) -> 'SMTP':
         self.__send('AUTH LOGIN')
+        time.sleep(0.1)
         self.__send(Base64.base64_from_string(login))
+        time.sleep(0.1)
         self.__send(Base64.base64_from_string(password))
         return self
 
     def build_header(self, sender: str, recipients: list, size: int) -> 'SMTP':
-        self.__send(f'MAIL FROM:<{sender} SIZE {size}>\r\n')
+        self.__send(f'MAIL FROM:<{sender}> SIZE={size}')
         for recipient in recipients:
-            time.sleep(0.5)
-            self.__send(f'RCPT TO:<{recipient}>\r\n')
+            time.sleep(0.3)
+            self.__send(f'RCPT TO:<{recipient}>')
         return self
 
     def send_data(self, data: str) -> 'SMTP':
-        time.sleep(0.5)
+        time.sleep(0.1)
         self.__send('DATA')
-        time.sleep(0.5)
-        self.__send(data)
-        time.sleep(0.5)
-        self.__send("\r\n.\r\n")
+        time.sleep(0.1)
+        self.__send(data, to_print=False)
+        time.sleep(0.3)
+        # self.__send("\r\n.\r\n")
         return self
 
     def __send(self, message: str):
         self._client.send(request(message))
         self.__receive()
 
-    def __receive(self):
-        # Если verbose включен, то выводим ответ сервера
-        if self._config.verbose:
-            print('Server:', self._client.recv(65535)
-                  .decode().removesuffix('\n'))
-        else:
-            self._client.recv(65535)
+    def __receive(self, to_print=True):
+        BUFFER_SIZE = 4096*4
+        response = bytearray()
+        self._client.settimeout(2.0)  # Set a timeout of 2 seconds
+        while True:
+            try:
+                data = self._client.recv(BUFFER_SIZE)
+                if not data:
+                    break
+                response.extend(data)
+            except socket.timeout:
+                break
+        self._client.settimeout(None)  # Remove the timeout
+        if to_print:
+            try:
+                print('Received: ')
+                print(response.decode())
+            except UnicodeDecodeError as e:
+                logging.error(f"Error while decoding: {e}")
+                print("Error while decoding")
+        try:
+            return response.decode().strip()
+        except UnicodeDecodeError as e:
+            logging.error(f"Error while decoding: {e}")
+            return response.decode(errors='ignore').strip()
 
     def quit(self):
         self.__send('QUIT')
@@ -75,7 +96,7 @@ def create_message(config: Config) -> str:
         message.append(attachment)
     message.end()
 
-    return f'{message.content}\r\n.\n'
+    return f'{message.content}'
 
 
 def get_attachments(path: str) -> list:
@@ -104,12 +125,19 @@ def main():
         message_file - path to the message file\nattachments - path to the directory with attachments\n\
         verbose - print server response if True or dont if False\n')
 
+    # TODO Принимать путь до файла конфигурации
     args = parser.parse_args()
-    config = Config('smtp/config_go.json')
+    config = Config('smtp/config_ya.json')
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+        socket.setdefaulttimeout(5)
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.verify_mode = ssl.CERT_REQUIRED
+        context.check_hostname = True
+        context.load_default_certs()
+        client = context.wrap_socket(
+            client, server_hostname=config.mail_server)
         client.connect((config.mail_server, config.port))
-        # Защищенное соединение
-        client = ssl.SSLContext().wrap_socket(sock=client)
 
     smtp = SMTP(client, config)
     message = create_message(config)
