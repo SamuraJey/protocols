@@ -1,7 +1,8 @@
-
 test.py
 *.pyc
 *.docx
 config*.*
 secret*.*
 .vscode/
+test*.*
+log*
