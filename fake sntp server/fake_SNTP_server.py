@@ -94,11 +94,15 @@ class Server:
 
     def run(self):
         try:
-            print("Server started")
+            print('Server started')
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.bind((self._IP, self._PORT))
         except OSError:
-            print("OSError, сервер не может запуститься")
+            print('OSError, сервер не может запуститься')
+            self.sock.close()
+            return
+        except Exception as e:
+            print(f'Неизвестная ошибка: {e}')
             self.sock.close()
             return
 
@@ -118,10 +122,14 @@ def main():
     parser.add_argument('-d', '--delay', type=int,
                         default=0, help='Сдвиг времени в секундах')
     parser.add_argument('-p', '--port', type=int,
-                        default=1233, help='Номер порта сервера')
+                        default=12, help='Номер порта сервера')
     args = parser.parse_args()
     # Почему то время в 2 раза меньше чем мы передаем... Поэтому умножаем на 2 =)
-    Server("localhost", args.port, args.delay*2).run()
+    try:
+        Server('localhost', args.port, args.delay*2).run()
+    except PermissionError:
+        print('Недостаточно прав для запуска сервера')
+    
 
 
 if __name__ == '__main__':
