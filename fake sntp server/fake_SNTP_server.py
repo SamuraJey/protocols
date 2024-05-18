@@ -12,18 +12,16 @@ class SNTP:
     """
     RFC 4330
     https://www.rfc-editor.org/rfc/inline-errata/rfc4330.html
-    """
 
-    """ 
-    > - Означает что данные в формате big-endian
-    B - 1 байт (unsigned char 8 bit)
-    I - 4 байта (unsigned int 32 bit)
+    > - Означает что данные в формате big-endian\n
+    B - 1 байт (unsigned char 8 bit)\n
+    I - 4 байта (unsigned int 32 bit)\n
     Q - 8 байт (unsigned long long 64 bit)
     """
     UNIX_TIME_SHIFT = 2208988800
     BYTE_OFFSET = 2 ** 32
     _HEADER_FORMAT = '> B B B B I I I Q Q Q Q'
-    _LEAP_INDICATOR = 0  # Нет предупреждений
+    _LEAP_INDICATOR = 0  # Нет предупреждений о дополнительной секунде
     _VERSION_NUMBER = 4  # номер версии NTP/SNTP
     _MODE = 4  # 3 - клиент, 4 - сервер
     # насколько точное время у сервера 1 - самый точный (атомные часы) 15 - не точное
@@ -82,36 +80,36 @@ class Server:
         self.time_delta = time_delta
         self._IP = ip_addr
         self._PORT = port
-        print(f'Сервер запущен на {self._IP}:{self._PORT}')
-        print(f'Установленное время сдвига: {time_delta//2} сек.')
+        print(f'Server started at {self._IP}:{self._PORT}')
+        print(f'Set time shift: {time_delta//2} sec.')
 
-    def handle_client(self, data, address):
+    def handle_client(self, data: bytes, address: tuple):
         received_packet = data[0]
-        print(f'Новый клиент: {address[0]}:{address[1]}')
+        print(f'New client: {address[0]}:{address[1]}')
         sntp = SNTP(self.time_delta)
         packet = sntp.do_magic(received_packet)
         self.sock.sendto(packet, address)
 
     def run(self):
         try:
-            print('Server started')
+            print('Starting server...')
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.sock.bind((self._IP, self._PORT))
         except OSError:
-            print('OSError, сервер не может запуститься')
+            print('OSError, server can not be started')
             self.sock.close()
             return
         except Exception as e:
-            print(f'Неизвестная ошибка: {e}')
+            print(f'Unknown error: {e}')
             self.sock.close()
             return
-
+        print('Server started')
         while True:
             try:
                 data = self.sock.recvfrom(1024)
             except KeyboardInterrupt:
                 self.sock.close()
-                print('Прерывание с клавиатуры, сервер остановлен')
+                print('Keyboard Interruption, server stopped')
                 break
             threading.Thread(target=self.handle_client,
                              args=(data, data[1])).start()
@@ -120,15 +118,15 @@ class Server:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--delay', type=int,
-                        default=0, help='Сдвиг времени в секундах')
+                        default=0, help='Set time shift')
     parser.add_argument('-p', '--port', type=int,
-                        default=12, help='Номер порта сервера')
+                        default=12, help='Port number')
     args = parser.parse_args()
     # Почему то время в 2 раза меньше чем мы передаем... Поэтому умножаем на 2 =)
     try:
         Server('localhost', args.port, args.delay*2).run()
     except PermissionError:
-        print('Недостаточно прав для запуска сервера')
+        print('Not enough permissions to start server')
     
 
 
